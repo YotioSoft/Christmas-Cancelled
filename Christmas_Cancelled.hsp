@@ -1,0 +1,766 @@
+/*------------------------------------------------
+
+			クリスマス中止のお知らせ。
+
+			   (C) YotioSoft 2018
+
+------------------------------------------------*/
+
+#uselib "user32.dll"
+	#func DrawText "DrawTextW" int,wstr,int,int,int
+		
+#module
+/*文字を中央に表示（使用例：cmes "hogehoge", 0, 640, 0, 480, 0）*/
+#deffunc cmes str ctext, int cx, int cy, int cx2, int cy2, int redraw_exist
+	RECT = cx, cy, cx2, cy2
+	DrawText@ hdc, ctext, -1, varptr(RECT), $01
+	if redraw_exist = 0 : redraw 1
+	return
+
+/*指定された範囲内にマウスがあるか確認する関数（使用例：click_range (100, 0, 300, 300) ）*/
+#defcfunc click_range int mouse_x, int mouse_y, int mouse_x2, int mouse_y2
+	if ginfo_wx1 <= ginfo_mx and ginfo_wx2 >= ginfo_mx and ginfo_wy1 <= ginfo_my and ginfo_wy2 >= ginfo_my and mouse_x <= mousex and mouse_x2 >= mousex and mouse_y <= mousey and mouse_y2 >= mousey {
+		return 1
+	}
+	
+	return 0
+
+/*半透明色表示命令（機能はboxfaと同じ）*/
+#deffunc sboxf int depth, int ax, int ay, int bx, int by
+	pdx = ax, bx, bx, ax
+	pdy = ay, ay, by, by
+	gmode 3,,,depth
+	gsquare -1,pdx, pdy
+	return
+
+/*疑似ボタンの表示*/
+#deffunc faked_button int x, int y, int sizex, int sizey, str word, int mode
+	if mode = 0 {
+		color 255, 255, 255
+	} else {
+		color 0, 162, 232
+	}
+	
+	line x, y, x, y+sizey
+	line x, y, x+sizex, y
+	line x, y+sizey, x+sizex, y+sizey
+	line x+sizex, y, x+sizex, y+sizey
+
+	color 255, 255, 255
+	cmes word, x, y+2, x+sizex, y+sizey
+	return
+		
+#global
+
+*start
+	scx = 640 : scy = 480
+	screen 0, scx, scy
+	randomize
+
+	title "クリスマス中止のお知らせ。"
+
+	// 画像読み込み
+	celload "img/logo.png", 1
+	
+	celload "img/house01.png", 2
+	celload "img/house02.png", 3
+	celload "img/house03.png", 4
+	
+	celload "img/city.png", 5
+
+	celload "img/gun_gray.png", 8
+	celload "img/santa_silhouette.png", 9
+
+	celload "img/santa.png", 10
+	celload "img/satan.png", 18
+	celload "img/bomb.png", 11
+	celload "img/smog.png", 12
+	celload "img/present.png", 13
+	celload "img/gun.png", 14
+	celload "img/gun_inverted.png", 17
+
+	celload "img/santa_icon.png", 15
+	celload "img/satan_icon.png", 19
+	celload "img/gun_white.png", 16
+
+	mmload "bgm/白.mp3", 0, 1
+	mmload "bgm/Hawk_Eye.mp3", 1, 1
+
+	mci "set ChristmasCanceled2018_01 time format milliseconds"
+	mci "set ChristmasCanceled2018_02 time format milliseconds"
+	
+	// 注意書き
+	color 63, 72, 204 : boxf
+
+	color 255, 255, 255
+	
+	font "Yu Gothic", 24, 1
+	cmes "注意", 0, 160, scx, 250
+
+	font "Yu Gothic", 14, 1
+	pos 230, 220 : mes "・音が出ます\n・大砲がでてきます\n・サンタが攻撃してきます"
+
+	onclick gosub *click
+	clicked_screen = "start"
+
+	repeat
+		redraw 0
+		color 63, 72, 204 : boxf 320-50, 330, 320-50+100, 330+20
+		faked_button 320-50, 330, 100, 20, "OK", click_range(320-50, 330, 320-50+100, 330+20)
+		redraw 1
+		wait 1
+	loop
+
+	stop
+
+*click
+	// *start
+	if clicked_screen = "start" and click_range(320-50, 330, 320-50+100, 330+20) {
+		mmplay 0
+		goto *menu
+	}
+
+	// *menu
+	if clicked_screen = "menu" {
+		if click_range(320-50, 350, 320-50+100, 350+20) {
+			goto *howto_play
+		}
+		if click_range(320-50, 380, 320-50+100, 380+20) {
+			goto *select_level
+		}
+	}
+
+	// *howto_play
+	if clicked_screen = "howto_play" {
+		if click_range(320-50, 380, 320-50+100, 380+20) {
+			goto *menu
+		}
+	}
+	
+	// *select_level
+	if clicked_screen = "select_level" {
+		if click_range(320-100, 330, 320-50+200, 330+20) {
+			level = 1
+			goto *main
+		}
+		if click_range(320-100, 360, 320-50+200, 360+20) {
+			level = 2
+			goto *main
+		}
+		if click_range(320-100, 390, 320-50+200, 390+20) {
+			level = 3
+			goto *main
+		}
+		if click_range(320-50, 420, 320-50+100, 420+20) {
+			goto *menu
+		}
+	}
+
+	// *result
+	if clicked_screen = "result" {
+		if click_range(320-50, 350, 320-50+100, 350+20) {
+			goto *main
+		}
+		if click_range(320-50, 380, 320-50+100, 380+20) {
+			mmplay 0
+			goto *menu
+		}
+	}
+
+	return
+
+*menu
+	clrobj
+
+	redraw 0
+	
+	color 63, 72, 204 : boxf
+
+	color 255, 244, 0 : circle scx-100, 50, scx-100+50, 50+50
+	repeat 50
+		x = rnd(scx) : y = rnd(250)
+		circle x, y, x+3, y+3
+	loop
+		
+	color 63, 72, 204 : circle scx-110, 40, scx-110+50, 40+50
+
+	color 50, 50, 50 : boxf 0, 300, scx, scy
+
+	gmode 2
+	pos 320-160, 20 : gcopy 1, 0, 0, 320, 140
+
+	pos 0, 300-130 : gcopy 5, 0, 0, scx, 130
+	pos 450, 300-50 : gcopy 8, 0, 0, 50, 50
+	pos 100, 100 : gcopy 9, 0, 0, 100, 100
+
+	redraw 1
+
+	// ボタンの表示
+	clicked_screen = "menu"
+
+	repeat
+		redraw 0
+		color 50, 50, 50 : boxf 320-50, 350, 320-50+100, 380+20
+		
+		faked_button 320-50, 350, 100, 20, "あそびかた", click_range(320-50, 350, 320-50+100, 350+20)
+		faked_button 320-50, 380, 100, 20, "はじめる", click_range(320-50, 380, 320-50+100, 380+20)
+		
+		redraw 1
+		wait 10
+	loop
+
+*howto_play
+	redraw 0
+	color 63, 72, 204 : boxf
+
+	pos 0, 300-130 : gcopy 5, 0, 0, scx, 130
+	color 50, 50, 50 : boxf 0, 300, scx, scy
+
+	font "Yu Gothic", 36, 1
+	color 255, 255, 255
+
+	pos 20, 20 : mes "あそびかた"
+
+	font "Yu Gothic", 26, 1
+	pos 25, 75 : mes "サンタを倒しましょう。"
+
+	font "Yu Gothic", 14, 1
+	pos 30, 110 : mes {"上空を飛んでいるサンタクロースを大砲で3回 命中させれば、ゲームクリアです。
+						途中、プレゼントが降ってきますが、避けてください。
+						大砲にプレゼントが3回当たるとゲームオーバーです。
+						
+						サンタに命中させるまでの時間、命中したプレゼントの数で点数が決まります。
+						
+						レベルは3つあり、初級はサンタも大砲もプレゼントもゆっくり動きます。
+						"}
+
+	font "Yu Gothic", 26, 1
+	pos 25, 260 : mes "操作方法"
+	
+	font "Yu Gothic", 14, 1
+	pos 30, 295 : mes {" ←→ : 大砲の移動
+						 ↑↓  : 大砲の向きの変更
+						SPACE : 大砲を打つ
+						"}
+
+	redraw 1
+
+	// ボタンの表示
+	clicked_screen = "howto_play"
+
+	repeat
+		redraw 0
+		color 50, 50, 50 : boxf 300-100, 380, 320-50+200, 380+20
+		
+		faked_button 320-50, 380, 100, 20, "もどる", click_range(320-50, 380, 320-50+100, 380+20)
+		
+		redraw 1
+		wait 10
+	loop
+	
+	stop
+
+*select_level
+	// ボタンの表示
+	clicked_screen = "select_level"
+
+	color 255, 255, 255
+	cmes "レベルを選択してください", 0, 310, scx, 330
+
+	repeat
+		redraw 0
+		color 50, 50, 50 : boxf 300-100, 330, 320-50+200, 420+20
+		
+		faked_button 320-100, 330, 200, 20, "初級 - やさしいサンタさん", click_range(320-100, 330, 320-50+200, 330+20)
+		faked_button 320-100, 360, 200, 20, "中級 - キレ気味のサンタさん", click_range(320-100, 360, 320-50+200, 360+20)
+		faked_button 320-100, 390, 200, 20, "上級 - サタンクロース", click_range(320-100, 390, 320-50+200, 390+20)
+		faked_button 320-50, 420, 100, 20, "もどる", click_range(320-50, 420, 320-50+100, 420+20)
+		
+		redraw 1
+		wait 10
+	loop
+	
+
+*main
+	clrobj
+
+	onclick 0
+
+	dim stars, 40, 2
+	repeat 40
+		stars(cnt, 0) = rnd(scx) : stars(cnt, 1) = rnd(350)
+	loop
+	
+	dim houseData, 7, 2	// 要素0 : バッファ番号 / 1 : 座標x
+	repeat 7
+		houseData(cnt, 0) = rnd(3)+2
+		houseData(cnt, 1) = 100 * cnt
+	loop
+
+	// 大砲の初期位置
+	gunPositionX = scx-100
+
+	// サンタの初期位置とデータ
+	santaPositionX = 100
+	santaMoves = 0
+	santaMovesCount = 0
+	santaLife = 3
+
+	// 爆弾の情報
+	dim bombData, 6
+	bombData(0) = 0		// 要素0 : 有効か無効か(1/0) / 要素1 : 座標x / 要素2 : 座標y / 要素3 : カウント
+
+	// プレイヤーの情報
+	playerLife = 3
+
+	// プレゼント（＝爆弾）の情報
+	dim presentData, 7		// 要素0 : 有効か無効か(1/0) / 要素1 : 座標x / 要素2 : 座標y
+	nextPresentNum = 0
+	attackedPresents = 0
+
+	// 雪の情報
+	if level > 1 {
+		dim snowballX, 30
+		dim snowballY, 30
+		dim snowballYSpeed, 30
+		dim snowballP, 30
+		dim snowballSize, 30
+	
+		repeat 30
+			snowballX(cnt) = rnd(scx)
+			snowballY(cnt) = -rnd(scy)
+	
+			snowballYSpeed(cnt) = rnd(3)
+	
+			if rnd(2) = 0 {
+				snowballP(cnt) = 1
+			} else {
+				snowballP(cnt) = -1
+			}
+			snowballSize(cnt) = rnd(5)+1
+		loop
+	}
+
+	mmplay 1
+
+	if level = 1 {
+		waitTime = 10
+	}
+	if level = 2 {
+		waitTime = 5
+	}
+	if level = 3 {
+		waitTime = 1
+	}
+		
+	inverted = 0
+	keyUnabled = 0
+
+	win = 0
+	lose = 0
+	timeOver = 0
+
+	time = 60+1
+
+	font "Yu Gothic", 14, 1
+
+	repeat
+		redraw 0
+
+		// 背景
+		color 255, 255, 255 : boxf
+		color 63, 72, 204   : boxf 0, 0, scx, 400
+
+		color 255, 244, 0 : circle scx-100, 50, scx-100+50, 50+50
+
+		// 星の表示
+		repeat 40
+			circle stars(cnt, 0), stars(cnt, 1), stars(cnt, 0)+3, stars(cnt, 1)+3
+		loop
+
+		// 月の表示
+		color 63, 72, 204 : circle scx-110, 40, scx-110+50, 40+50
+	
+		gmode 2
+		pos 0, 400-130 : gcopy 5, 0, 0, scx, 130
+
+		//雪の表示
+		if level > 1 {
+			i = cnt
+			repeat 30
+				color 255, 255, 255
+				circle snowballX(cnt)-snowballSize(cnt), snowballY(cnt)-snowballSize(cnt), snowballX(cnt)+snowballSize(cnt), snowballY(cnt)+snowballSize(cnt)
+	
+				if i \ 5 = 0 {
+					if i \ 50 = 0 {
+						snowballP(cnt) *= -1
+					}
+					snowballX(cnt) += snowballP(cnt)
+						
+					snowballY(cnt) += snowballYSpeed(cnt)
+				}
+	
+				if snowballY(cnt) > 400 {
+					snowballX(cnt) = rnd(scx)
+					snowballY(cnt) = -10
+	
+					snowballYSpeed(cnt) = rnd(3)
+					
+					if rnd(2) = 0 {
+						snowballP(cnt) = 1
+					} else {
+						snowballP(cnt) = -1
+					}
+					snowballSize = rnd(5)+1
+				}
+			loop
+		}
+
+		// 家の表示
+		repeat 7
+			pos houseData(cnt, 1), 400-33 : gcopy houseData(cnt, 0), 0, 0, 50, 33
+
+			// プレゼント投下の延長線上にこの家があれば, サンタがプレゼントを落とす
+			if santaPositionX < gunPositionX {
+				if santaPositionX+(400-100)/2-50-1 <= houseData(cnt, 1) and santaPositionX+(400-100)/2-50 >= houseData(cnt, 1) and presentData(0) = 0 {
+					presentData(0) = 1
+					presentData(1) = santaPositionX
+					presentData(2) = 100
+					presentData(6) = 0
+				}
+			} else {
+				if santaPositionX-(400-100)/2-50-1 <= houseData(cnt, 1) and santaPositionX+(400-100)/2-50 >= houseData(cnt, 1) and presentData(0) = 0 {
+					presentData(0) = 1
+					presentData(1) = santaPositionX
+					presentData(2) = 100
+					presentData(6) = 1
+				}
+			}
+
+			
+			houseData(cnt, 1) += 2
+
+			if houseData(cnt, 1) > scx {
+				houseData(cnt, 1) = -50
+			}
+		loop
+
+		// サンタの表示
+		pos santaPositionX, 100 : gcopy 10+8*(level/3), 0, 0, 68, 40
+
+		// サンタに爆弾があたったら爆発を表示
+		if bombData(4) > 0 {
+			pos santaPositionX+10, 110 : gcopy 12, 0, 0, 32, 32
+			bombData(4) ++
+
+			if bombData(4) > 40 * 10 / waitTime {
+				bombData(4) = 0
+			}
+		}
+
+		// サンタの移動（ランダム）
+		if rnd(80) = 79 and santaMoves = 0 {
+			if rnd(2) = 1 {
+				santaMoves = 1
+			} else {
+				santaMoves = -1
+			}
+
+			if santaPositionX < 1 {
+				santaMoves = 1
+			}
+			if santaPositionX >= scx-68 {
+				santaMoves = -1
+			}
+
+			santaMovesCount = 0
+		}
+		if santaMoves != 0 {
+			santaMovesCount ++
+			santaPositionX += santaMoves
+
+			if santaMovesCount > 400 or rnd(100) = 99 or santaPositionX < 1 or santaPositionX >= scx-68 {
+				santaMoves = 0
+			}
+		}
+
+		// プレゼントの表示
+		if presentData(0) = 1 {
+			pos presentData(1), presentData(2) : gcopy 13, 0, 0, 32, 37
+		}
+
+		// プレゼントに爆弾があたったら爆発を表示
+		if presentData(5) > 0 and presentData(0) = 0 {
+			pos presentData(1)+5, presentData(2)+5 : gcopy 12, 0, 0, 32, 32
+			presentData(5) ++
+
+			if presentData(5) > 40 * 10 / waitTime {
+				presentData(5) = 0
+			}
+		}
+
+		// プレゼントの移動
+		if presentData(0) = 1 {
+			if presentData(6) = 0 {
+				presentData(1) += 1
+				presentData(2) += 2
+			} else {
+				presentData(1) -= 1
+				presentData(2) += 2
+			}
+
+			if presentData(2) > 400 {
+				presentData(0) = 0
+			}
+		}
+
+		// 大砲の表示
+		pos gunPositionX, 400-60
+		if inverted = 0 : gcopy 14, 0, 0, 65, 60 : else : gcopy 17, 0, 0, 65, 60
+
+		// 大砲にプレゼントがあたったら爆発を表示
+		if presentData(4) > 0 {
+			pos gunPositionX+10, 400-50 : gcopy 12, 0, 0, 32, 32
+			presentData(4) ++
+
+			if presentData(4) > 40 * 10 / waitTime {
+				presentData(4) = 0
+			}
+		}
+
+		// 十字キー（大砲）操作受付
+		getkey keyLeft, 37
+		if keyLeft = 1 and gunPositionX >= 0 {
+			gunPositionX -= 5
+		}
+
+		getkey ketRight, 39
+		if ketRight = 1 and gunPositionX <= scx-65 {
+			gunPositionX += 5
+		}
+
+		if keyUnabled > 0 {
+			keyUnabled ++
+
+			if keyUnabled > 50 + 100*(level/3) {
+				keyUnabled = 0
+			}
+		}
+		
+		getkey keyUp, 38
+		getkey keyDown, 40
+		if (keyUp = 1 or keyDown = 1) and keyUnabled = 0 {
+			if inverted = 0 : inverted = 1 : else : inverted = 0
+			keyUnabled = 1
+		}
+
+		// 爆弾の表示と移動
+		if bombData(0) = 1 {
+			pos bombData(1), bombData(2) : gcopy 11, 0, 0, 32, 32
+
+			if bombData(5) = 0 {
+				bombData(1) -= 1
+				bombData(2) -= 2
+				pos gunPositionX, 400-60 : gcopy 12, 0, 0, 32, 32
+			} else {
+				bombData(1) += 1
+				bombData(2) -= 2
+				pos gunPositionX+65-32, 400-60 : gcopy 12, 0, 0, 32, 32
+			}
+
+			bombData(3) ++
+
+			if bombData(3) > 40 * 10 / waitTime {
+				bombData(3) = 0
+			}
+
+			if bombData(2) < -32 {
+				bombData(0) = 0
+			}
+		}
+
+		// 爆弾を打つ（爆弾が表示されていないときのみ）
+		if bombData(0) = 0 {
+			getkey keySpace, 32
+			if keySpace = 1 {
+				bombData(0) = 1
+				bombData(1) = gunPositionX + (65-32) * inverted
+				bombData(2) = 400-60
+				bombData(3) = 0
+				bombData(5) = inverted
+
+				// 効果音
+				mci "close ChristmasCanceled2018_01"
+				mci "open \""+dirinfo(0)+"\\bgm\\se\\taihou01.mp3\" alias ChristmasCanceled2018_01"
+				mci "play ChristmasCanceled2018_01"
+			}
+		}
+
+		// 残り機数の表示
+		repeat santaLife
+			pos 10+cnt*35, 10 : gcopy 15+4*(level/3), 0, 0, 32, 32
+		loop
+		repeat playerLife
+			pos 10+cnt*35, 40 : gcopy 16, 0, 0, 32, 32
+		loop
+
+		// 残り時間の表示
+		if time > 10 {
+			color 255, 255, 255
+		} else {
+			color 255, 0, 0
+		}
+		
+		pos scx-100, 10 : mes "TIME "+time+"s"
+
+		redraw 1
+
+		// 当たり判定
+		// 爆弾の当たり判定
+		// ->サンタ
+		if bombData(0) = 1 {
+			if bombData(1) >= santaPositionX and bombData(1) <= santaPositionX+68 and bombData(2) >= 100 and bombData(2) <= 130 {
+				santaLife --
+
+				bombData(0) = 0
+				bombData(4) = 1
+
+				// 効果音
+				mci "close ChristmasCanceled2018_02"
+				mci "open \""+dirinfo(0)+"\\bgm\\se\\taihou02.mp3\" alias ChristmasCanceled2018_02"
+				mci "play ChristmasCanceled2018_02"
+
+				if santaLife = 0 {
+					pos santaPositionX+10, 110 : gcopy 12, 0, 0, 32, 32
+
+					color 63, 72, 204   : boxf 10, 10, 10+32, 10+32
+
+					win = 1
+					
+					wait 1
+					break
+				}
+			}
+		}
+
+		// ->プレゼント
+		if bombData(0) = 1 {
+			if bombData(1) >= presentData(1) and bombData(1) <= presentData(1)+32 and bombData(2) >= presentData(2) and bombData(2) <= presentData(2)+27 {
+				bombData(0) = 0
+				
+				presentData(0) = 0
+				presentData(5) = 1
+
+				attackedPresents ++
+
+				// 効果音
+				mci "close ChristmasCanceled2018_02"
+				mci "open \""+dirinfo(0)+"\\bgm\\se\\taihou02.mp3\" alias ChristmasCanceled2018_02"
+				mci "play ChristmasCanceled2018_02"
+			}
+		}
+
+		// プレゼントの当たり判定
+		if presentData(0) = 1 {
+			if presentData(1) >= gunPositionX and presentData(1) <= gunPositionX+65 and presentData(2) >= 400-50 and presentData(2) <= 400 {
+				playerLife --
+
+				presentData(0) = 0
+				presentData(4) = 1
+
+				// 効果音
+				mci "close ChristmasCanceled2018_02"
+				mci "open \""+dirinfo(0)+"\\bgm\\se\\taihou02.mp3\" alias ChristmasCanceled2018_02"
+				mci "play ChristmasCanceled2018_02"
+
+				if playerLife = 0 {
+					pos gunPositionX+10, 400-50 : gcopy 12, 0, 0, 32, 32
+
+					color 63, 72, 204   : boxf 10, 40, 10+32, 40+32
+
+					lose = 1
+					
+					wait 1
+					break
+				}
+			}
+		}
+
+		if (level = 1 and cnt \ 95 = 0) or (level = 2 and cnt \ 190 = 0) or (level = 3 and cnt \ 580 = 0) {
+			time --
+
+			if time < 0 {
+				timeOver = 1
+				time = 0
+				break
+			}
+		}
+		
+		await waitTime
+	loop
+
+*calc_points
+	points = 0
+	if win = 1 {
+		points += attackedPresents * 100
+		points += time * 100
+	}
+	if lose = 1 {
+		points += attackedPresents * 100
+		points += (60-time) * 10
+	}
+	if timeOver = 1 {
+		points += attackedPresents * 100
+	}
+
+	points *= level
+
+*result
+	redraw 0
+	
+	color 0, 0, 0
+	sboxf 128, 0, 0, scx, scy
+
+	color 255, 255, 255
+	font "Yu Gothic", 48, 1
+
+	if win = 1 {
+		cmes "You Win!", 0, 100, scx, 150
+	}
+
+	if lose = 1 {
+		cmes "You Lose...", 0, 100, scx, 150
+	}
+
+	if timeOver = 1 {
+		cmes "Time Over!", 0, 100, scx, 150
+	}
+
+	font "Yu Gothic", 14, 1
+	pos 225, 200
+	mes {"
+		当たったプレゼントの数 : "}+attackedPresents+{"\n
+		残り時間 : "}+time+{"sec.\n
+	"}
+
+	font "Yu Gothic", 26, 1
+	cmes ""+points+"点", 0, 280, scx, 310
+
+	redraw 1
+
+	clicked_screen = "result"
+
+	onclick 1
+	font "Yu Gothic", 14, 1
+
+	repeat
+		redraw 0
+		color 50, 50, 50 : boxf 320-50, 350, 320-50+100, 370
+		color 50, 50, 50 : boxf 320-50, 380, 320-50+100, 400
+		
+		faked_button 320-50, 350, 100, 20, "Again?", click_range(320-50, 350, 320-50+100, 350+20)
+		faked_button 320-50, 380, 100, 20, "タイトル画面へ", click_range(320-50, 380, 320-50+100, 380+20)
+		
+		redraw 1
+		wait 10
+	loop
